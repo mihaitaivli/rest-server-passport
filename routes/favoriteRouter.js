@@ -8,28 +8,37 @@ var favoriteRouter = express.Router();
 favoriteRouter.use(bodyParser.json());
 
 favoriteRouter.route('/')
-    .get(Verify.verifyOrdinaryUser, function (req, res, next) {
+    .all(Verify.verifyOrdinaryUser)
+    .get(function (req, res, next) {
         Favorites.find({})
+            .populate('postedby')
+            .populate('dishes')
             .exec(function (err, favorite) {
                 if (err) throw err;
                 res.json(favorite);
             });
     })
 
-    .post(Verify.verifyOrdinaryUser, function (req, res, next) {
+    .post(function (req, res, next) {
         Favorites.create(req.body, function (err, favorite) {
             if (err) throw err;
-            console.log('Favorite added');
+            // console.log('Favorite added');
+            favorite.postedBy = req.decoded._doc._id;
             var id = favorite._id;
-            res.writeHead(200, {
-                'Content-Type': 'text/plain'
+            favorite.dishes.push(id);
+            favorite.save(function (err, fav) {
+                if (err) throw err;
+                res.json(fav);
             });
-
-            res.end('Added the favorite with id: ' + id);
+            // res.writeHead(200, {
+            //     'Content-Type': 'text/plain'
+            // });
+            //
+            // res.end('Added the favorite with id: ' + id);
         });
     })
 
-    .delete(Verify.verifyOrdinaryUser, function (req, res, next) {
+    .delete(function (req, res, next) {
         Favorites.remove({}, function (err, resp) {
             if (err) throw err;
             res.json(resp);
