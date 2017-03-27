@@ -11,31 +11,35 @@ favoriteRouter.route('/')
     .all(Verify.verifyOrdinaryUser)
     .get(function (req, res, next) {
         Favorites.find({})
-            .populate('postedby')
+            .populate('postedBy')
             .populate('dishes')
             .exec(function (err, favorite) {
                 if (err) throw err;
                 res.json(favorite);
             });
     })
-
     .post(function (req, res, next) {
-        Favorites.create(req.body, function (err, favorite) {
-            if (err) throw err;
-            // console.log('Favorite added');
-            favorite.postedBy = req.decoded._doc._id;
-            var id = favorite._id;
-            favorite.dishes.push(id);
-            favorite.save(function (err, fav) {
-                if (err) throw err;
-                res.json(fav);
-            });
-            // res.writeHead(200, {
-            //     'Content-Type': 'text/plain'
-            // });
-            //
-            // res.end('Added the favorite with id: ' + id);
-        });
+
+        var postedBy = req.decoded._doc._id;
+        // console.log('posted by ' + postedBy);
+
+        Favorites.findOneAndUpdate(
+            {"postedBy": postedBy}, //find object belonging to the poster
+            {$push: {"dishes": req.body._id}}, //push fav to array
+            {upsert:true, 'new': true}, //options to create object, return new one
+            function (err, favorite) { //callback
+                if (err){
+                    throw err
+                }
+                else {
+                    //handle favorite
+                    favorite.save(function (err, fav) {
+                                if (err) throw err;
+                                res.json(fav);
+                            });
+                }
+            }
+        );
     })
 
     .delete(function (req, res, next) {
@@ -43,6 +47,12 @@ favoriteRouter.route('/')
             if (err) throw err;
             res.json(resp);
         });
+    });
+
+favoriteRouter.route('/:favId')
+    .all(Verify.verifyOrdinaryUser)
+    .delete(function(req, res, next){
+
     });
 
 module.exports = favoriteRouter;
